@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import (Column, String, ForeignKey, DateTime, Text, Integer, Enum as SQLAlchemyEnum)
+from sqlalchemy import (Column, String, ForeignKey, DateTime, Text, Integer, Enum as SQLAlchemyEnum, Boolean)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -20,7 +20,7 @@ class User(Base):
     name = Column(String)
 
     # Relationships
-    prompts = relationship("prompt", back_populates="user")
+    prompts = relationship("Prompt", back_populates="user")
     recordings = relationship("Recording", back_populates="user")
 
 #prompt_type model: Relates a prompt with its type
@@ -30,21 +30,21 @@ class PromptType(Base):
     label = Column(String, unique=True, nullable=False) #e.g., "Keynote", "Debate" etc
 
     # Relationships
-    prompts = relationship("Prompt", back_populates=type)
+    prompts = relationship("Prompt", back_populates="prompt_type")
 
 # Prompt Model
 class Prompt(Base):
     __tablename__ = "prompts"
     id = Column(Integer, primary_key=True, autoincrement=True)
     text = Column(Text, nullable=False)
-    type_id = Column(Integer, ForeignKey("prompt_types.id"), nullable=False)
+    prompt_type_id = Column(Integer, ForeignKey("prompt_types.id"), nullable=False)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    is_active = Column(String, default=True)
+    is_active = Column(Boolean, default=True)
 
     # Relationships
     user = relationship("User", back_populates="prompts")
-    type = relationship("PromptType", back_populates="prompts")
+    prompt_type = relationship("PromptType", back_populates="prompts")
     recordings = relationship("Recording", back_populates="prompt")
 
 # Recording Model
