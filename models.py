@@ -1,0 +1,64 @@
+import uuid
+from sqlalchemy import (Column, String, ForeignKey, DateTime, Text, Integer, Enum as SQLAlchemyEnum)
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+from .database import Base
+import enum
+
+#Define an Enum for the recording status
+class RecordingStatus(str, enum.Enum):
+    PENDING = "pending"
+    DONE = "done"
+    ERROR = "error"
+
+# User model corresponding to the 'users' table
+class User(Base):
+    __tablename__ = "users"
+    id = Column(UUID(as_uuid=True), primary_key = True, default=uuid.uuid4)
+    email = Column(String, unique=True, index=True, nullable=False)
+    name = Column(String)
+
+    # Relationships
+    prompts = relationship("prompt", back_populates="user")
+    recordings = relationship("Recording", back_populates="user")
+
+#prompt_type model: Relates a prompt with its type
+class PromptType(Base):
+    __tablename__ = "prompt_types"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    label = Column(String, unique=True, nullable=False) #e.g., "Keynote", "Debate" etc
+
+    # Relationships
+    prompts = relationship("Prompt", back_populates=type)
+
+# Prompt Model
+class Prompt(Base):
+    __tablename__ = "prompts"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    text = Column(Text, nullable=False)
+    type_id = Column(Integer, ForeignKey("prompt_types.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    is_active = Column(String, default=True)
+
+    # Relationships
+    user = relationship("User", back_populates="prompts")
+    type = relationship("PromptType", back_populates="prompts")
+    recordings = relationship("Recording", back_populates="prompt")
+
+# Recording Model
+class Recording(Base):
+    __tablename__ = "recordings"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    prompt_id = Column(Integer, ForeignKey("prompts.id"), nullable=False)
+    audio_url = Column(String, nullable=False)
+    transcript = Column(Text, nullable=True)
+    duration_seconds = Column(Integer)
+    status = Column(SQLAlchemyEnum(RecordingStatus), default=RecordingStatus.PENDING, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    user = relationship("User", back_populates="recordings")
+    prompt = relationship("Prompt", back_populates="recordings")
