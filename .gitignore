@@ -1,4 +1,5 @@
-.env/
+# Environment variables - do not commit secrets
+.env
 
 venv/
 
