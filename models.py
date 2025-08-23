@@ -37,8 +37,8 @@ class Prompt(Base):
     __tablename__ = "prompts"
     id = Column(Integer, primary_key=True, autoincrement=True)
     text = Column(Text, nullable=False)
-    prompt_type_id = Column(Integer, ForeignKey("prompt_types.id"), nullable=False)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    prompt_type_id = Column(Integer, ForeignKey("prompt_types.id"), nullable=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     is_active = Column(Boolean, default=True)
 
