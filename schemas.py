@@ -1,6 +1,7 @@
 import uuid
 from pydantic import BaseModel, EmailStr, ConfigDict
 from datetime import datetime
+from .models import RecordingStatus
 
 # Base model for a user, this is what the API will return
 class User(BaseModel):
@@ -23,7 +24,8 @@ class PromptType(PromptTypeBase):
 # ---Prompt Schemas---
 class PromptCreate(BaseModel):
     text: str
-    type_id: int | None = None
+    # type_id is no longer part of the creation schema.
+    # The backend will assign a "Custom" type automatically.
 
 
 class Prompt(BaseModel):
@@ -32,5 +34,22 @@ class Prompt(BaseModel):
     user_id: uuid.UUID | None = None
     created_at: datetime
     prompt_type: PromptType | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+#---Recording Schemas---
+class RecordingBase(BaseModel):
+    prompt_id: int
+    duration_seconds: int
+
+class Recording(RecordingBase):
+    id: uuid.UUID
+    user_id: uuid.UUID
+    audio_url: str
+    transcript: str | None = None
+    status: RecordingStatus
+    created_at: datetime
+    prompt: Prompt
 
     model_config = ConfigDict(from_attributes=True)

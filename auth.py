@@ -4,7 +4,7 @@ import uuid
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from sqlalchemy.orm import Session
-from supabase import create_client, AuthError
+from supabase import create_client, AuthError, Client
 from . import models, schemas
 from .database import get_db
 
@@ -13,7 +13,7 @@ load_dotenv()
 SUPABASE_PROJECT_URL = os.getenv("SUPABASE_PROJECT_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
-supabase = create_client(SUPABASE_PROJECT_URL, SUPABASE_KEY)
+supabase: Client = create_client(SUPABASE_PROJECT_URL, SUPABASE_KEY)
 
 
 # Reusable security scheme
@@ -69,4 +69,3 @@ def get_current_user(
         return new_user
 
     return user
-

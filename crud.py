@@ -1,26 +1,16 @@
 import uuid
-from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import or_, desc
+from typing import List
 from . import models, schemas
 
-# ---Prompt Functions---
-
-def get_prompts_by_user(db: Session, user_id: uuid.UUID):
+def create_user_prompt(db: Session, prompt: schemas.PromptCreate, user_id: uuid.UUID, prompt_type_id: int):
     """
-    Retrieves all prompts available to a specific user.
-    This includes both default prompts (user_id is Null) and 
-    the user's own custom prompts
-    """
-
-    return db.query(models.Prompt).filter(or_(models.Prompt.user_id == user_id, models.Prompt.user_id == None)).all()
-
-def create_user_prompt(db: Session, prompt: schemas.PromptCreate, user_id: uuid.UUID):
-    """
-    Creates a new prompt and associates it with a user
+    Creates a new prompt and associates it with a user and a prompt type.
     """
     db_prompt = models.Prompt(
         text=prompt.text,
-        prompt_type_id=prompt.type_id,
+        prompt_type_id=prompt_type_id,
         user_id=user_id
     )
     db.add(db_prompt)
@@ -30,8 +20,44 @@ def create_user_prompt(db: Session, prompt: schemas.PromptCreate, user_id: uuid.
 
 # ---PromptType Functions---
 
-def get_prompt_types(db: Session):
+def get_or_create_prompt_type(db: Session, label: str) -> models.PromptType:
     """
-    Retrieves all available prompt types.
+    Retrieves a prompt type by label, creating it if it doesn't exist.
     """
-    return db.query(models.PromptType).all()
+    prompt_type = db.query(models.PromptType).filter(models.PromptType.label == label).first()
+    if not prompt_type:
+        prompt_type = models.PromptType(label=label)
+        db.add(prompt_type)
+        db.commit()
+        db.refresh(prompt_type)
+    return prompt_type
+
+
+
+#---Recording Functions---#
+def create_recording(db: Session, user_id: uuid.UUID, prompt_id: int, duration: int, audio_url: str):
+    """
+    Creates a new recording entry in the database.
+    """
+    db_recording = models.Recording(
+        user_id=user_id,
+        prompt_id=prompt_id,
+        duration_seconds = duration,
+        audio_url=audio_url,
+        status=models.RecordingStatus.PENDING # Default Status
+    )
+    db.add(db_recording)
+    db.commit()
+    db.refresh(db_recording)
+    return db_recording
+
+def get_recording(db: Session, recording_id: uuid.UUID, user_id: uuid.UUID):
+    """
+    Retrieves a specific recording by its ID, ensuring it belongs to the user.
+    """
+    return (
+        db.query(models.Recording)
+        .options(joinedload(models.Recording.prompt))
+        .filter(models.Recording.id == recording_id, models.Recording.user_id == user_id)
+        .first()
+    )
