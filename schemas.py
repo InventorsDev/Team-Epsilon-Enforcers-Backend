@@ -53,3 +53,36 @@ class Recording(RecordingBase):
     prompt: Prompt
 
     model_config = ConfigDict(from_attributes=True)
+
+
+
+# ---Analysis Schemas for the new synchronous endpoint---
+
+class FillerWordsDetails(BaseModel):
+    count: int
+    ratio: float # e.g., 0.05 for 5%
+
+class Scores(BaseModel):
+    fluency: int
+    pronunciation: int
+    # Changed to an integer score for consistency
+    filler_words: int
+    pacing: int 
+
+class Details(BaseModel):
+    wer: float # Word Error Rate
+    wpm: int # Words Per Minute
+    pauses: int # Number of significant pauses
+    # Added details for filler words
+    filler_words_details: FillerWordsDetails
+
+class AnalysisResponse(BaseModel):
+    transcript: str
+    scores: Scores
+    details: Details
+    duration_seconds: float
+
+class CombinedAnalysisResponse(AnalysisResponse):
+    """The response model for the unified analysis and submission endpoint."""
+    recording_id: uuid.UUID
+    signed_audio_url: str

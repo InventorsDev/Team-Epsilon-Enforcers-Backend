@@ -51,13 +51,4 @@ def create_recording(db: Session, user_id: uuid.UUID, prompt_id: int, duration: 
     db.refresh(db_recording)
     return db_recording
 
-def get_recording(db: Session, recording_id: uuid.UUID, user_id: uuid.UUID):
-    """
-    Retrieves a specific recording by its ID, ensuring it belongs to the user.
-    """
-    return (
-        db.query(models.Recording)
-        .options(joinedload(models.Recording.prompt))
-        .filter(models.Recording.id == recording_id, models.Recording.user_id == user_id)
-        .first()
-    )
+
