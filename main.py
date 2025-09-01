@@ -12,6 +12,7 @@ import mimetypes
 import uuid
 from .rev_ai_service import transcribe_audio_revai_async
 from .analysis_service import perform_full_analysis_async
+import logging
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -25,7 +26,7 @@ app = FastAPI(
 # This must be added before any routes are defined.
 # It's good practice to manage allowed origins via environment variables.
 # For development, you might have something like: "http://localhost:3000,http://127.0.0.1:3000"
-origins_str = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173")
+origins_str = os.getenv("ALLOWED_ORIGINS")
 origins = [origin.strip() for origin in origins_str.split(",")]
 
 app.add_middleware(
@@ -100,6 +101,10 @@ async def submit_and_analyze(
     3. Transcribes and analyzes the audio for fluency, pronunciation, and pacing.
     4. Returns the full analysis along with the new recording's ID and a signed URL for playback.
     """
+    # Logger configuration
+    logger = logging.getLogger("uvicorn.error")  # Get the default logger used by FastAPI/Uvicorn
+    logger.setLevel(logging.INFO)  # Log INFO level and above
+
     # 1. --- File Validation ---
     if file.content_type not in SUPPORTED_MIME_TYPES:
         raise HTTPException(status_code=400, detail=f"Unsupported file type: {file.content_type}")
@@ -110,11 +115,26 @@ async def submit_and_analyze(
 
     # 2. --- Transcription and Analysis ---
     # We run this first as it is often the longest part of the process.
-    transcript, word_timestamps = await transcribe_audio_revai_async(file_contents, file.content_type)
-    if transcript is None:
-        raise HTTPException(status_code=502, detail="Failed to transcribe audio via external service.")
-    
-    analysis_results = await perform_full_analysis_async(prompt_text, transcript, word_timestamps)
+    try:
+        # Add logging
+        logger.info(f"Received audio file: {file.filename}, type: {file.content_type}")
+        logger.info(f"Prompt text: {prompt_text}")
+        
+        transcript, word_timestamps = await transcribe_audio_revai_async(file_contents, file.content_type)
+        logger.info(f"Transcription result: {transcript[:100]}...")  # Log first 100 chars
+        
+        if transcript is None:
+            raise HTTPException(status_code=502, detail="Failed to transcribe audio via external service.")
+        
+        analysis_results = await perform_full_analysis_async(prompt_text, transcript, word_timestamps)
+        logger.info(f"Analysis completed successfully: {analysis_results}")
+        
+    except Exception as e:
+        logger.error(f"Error in submit_and_analyze: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
 
     # 3. --- Database and Storage Operations ---
     # A. Create the Prompt

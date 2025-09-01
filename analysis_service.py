@@ -1,9 +1,13 @@
 # /analysis_service.py
 
+import logging
 import jiwer
 import re
 from fastapi.concurrency import run_in_threadpool
 from typing import List, Dict
+
+# --- Logger Configuration ---
+logger = logging.getLogger(__name__)
 
 # --- Constants for Scoring ---
 IDEAL_WPM = 150
@@ -55,36 +59,36 @@ def analyze_fluency(transcript: str, word_timestamps: List[Dict], duration_secon
                 
     return wpm, pause_count, fluency_score
 
-def analyze_pronunciation(prompt_text: str, transcript: str):
+def analyze_pronunciation(prompt: str, transcript: str) -> tuple[float, float]:
     """
-    Calculates Word Error Rate (WER) and converts it to a pronunciation score.
-
-    Returns:
-        A tuple of (wer, pronunciation_score).
+    Analyzes pronunciation accuracy using Word Error Rate (WER)
+    and converts it to a 0-100 score.
     """
-    if not prompt_text or not transcript:
-        return 0.0, 0
-
-    # Clean and prepare text for comparison
-    transformation = jiwer.Compose([
-        jiwer.ToLowerCase(),
-        jiwer.RemovePunctuation(),
-        jiwer.RemoveMultipleSpaces()
-    ])
-    
-    output = jiwer.process_words(
-        prompt_text,
-        transcript,
-        reference_transform=transformation,
-        hypothesis_transform=transformation
-    )
-    wer = output.wer
-    
-    # Convert WER to a 0-100 score (lower WER is better)
-    # A WER of 0.5 or higher results in a score of 0.
-    pronunciation_score = normalize_inverted_score(wer, 0.5)
-    
-    return wer, pronunciation_score
+    try:
+        # Use jiwer's default transformations
+        transformation = jiwer.Compose([
+            jiwer.ToLowerCase(),
+            jiwer.RemoveMultipleSpaces(),
+            jiwer.Strip(),
+            jiwer.RemovePunctuation(),
+            jiwer.SentencesToListOfWords(),
+        ])
+        
+        # Calculate WER using the transformation
+        wer = jiwer.wer(
+            reference=prompt,
+            hypothesis=transcript,
+            truth_transform=transformation,
+            hypothesis_transform=transformation
+        )
+        
+        # Convert WER to a 0-100 score where 0 WER = 100 score
+        pronunciation_score = max(0, 100 * (1 - wer))
+        
+        return wer, pronunciation_score
+    except Exception as e:
+        logger.error(f"Error calculating pronunciation score: {str(e)}")
+        return 1.0, 0.0  # Return worst case scores on error
 
 def analyze_filler_words(transcript: str):
     """
