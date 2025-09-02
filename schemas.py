@@ -73,6 +73,7 @@ class Details(BaseModel):
     wer: float # Word Error Rate
     wpm: int # Words Per Minute
     pauses: int # Number of significant pauses
+    confidence: float | None = None
     # Added details for filler words
     filler_words_details: FillerWordsDetails
 

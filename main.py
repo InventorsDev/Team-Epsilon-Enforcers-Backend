@@ -10,7 +10,7 @@ import os
 from typing import List
 import mimetypes
 import uuid
-from .rev_ai_service import transcribe_audio_revai_async
+from .transcription_service import transcribe_audio_assemblyai_async
 from .analysis_service import perform_full_analysis_async
 import logging
 
@@ -40,7 +40,7 @@ app.add_middleware(
 
 #---Audio Configuration and Helpers---
 
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+MAX_FILE_SIZE = 50 * 1024 * 1024  # 10 MB
 SUPPORTED_MIME_TYPES = ["audio/mp3", "audio/wav", "audio/mpeg", "audio/webm", "audio/x-m4a"]
 SUPABASE_BUCKET = "Recordings"
 
@@ -111,22 +111,23 @@ async def submit_and_analyze(
 
     file_contents = await file.read()
     if len(file_contents) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=413, detail="File size exceeds the 10MB limit.")
+        raise HTTPException(status_code=413, detail="File size exceeds the 50MB limit.")
 
     # 2. --- Transcription and Analysis ---
     # We run this first as it is often the longest part of the process.
     try:
         # Add logging
-        logger.info(f"Received audio file: {file.filename}, type: {file.content_type}")
-        logger.info(f"Prompt text: {prompt_text}")
+        # logger.info(f"Received audio file: {file.filename}, type: {file.content_type}")
+        # logger.info(f"Prompt text: {prompt_text}")
         
-        transcript, word_timestamps = await transcribe_audio_revai_async(file_contents, file.content_type)
-        logger.info(f"Transcription result: {transcript[:100]}...")  # Log first 100 chars
+        transcript, word_timestamps, confidence = await transcribe_audio_assemblyai_async(file_contents, file.content_type)
+        # logger.info(f"Transcription result: {transcript[:100]}...")  # Log first 100 chars
+        # logger.info(f"Word_Timestamps: {word_timestamps}")
         
         if transcript is None:
             raise HTTPException(status_code=502, detail="Failed to transcribe audio via external service.")
         
-        analysis_results = await perform_full_analysis_async(prompt_text, transcript, word_timestamps)
+        analysis_results = await perform_full_analysis_async(prompt_text, transcript, word_timestamps, confidence)
         logger.info(f"Analysis completed successfully: {analysis_results}")
         
     except Exception as e:
@@ -172,6 +173,12 @@ async def submit_and_analyze(
         duration=int(analysis_results["duration_seconds"]),
         audio_url=file_path
     )
+
+    # NEW: Update status to DONE to reflect completion
+    recording.status = models.RecordingStatus.DONE
+    db.add(recording)
+    db.commit()
+    db.refresh(recording)
 
     # 4. --- Generate Signed URL ---
     # This function modifies the recording object in-place for the response
