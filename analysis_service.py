@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 IDEAL_WPM_MIN = 140
 IDEAL_WPM_MAX = 160
 WPM_TOLERANCE = 35
-PAUSE_THRESHOLD_MS = 500  # A pause is considered significant if it's longer than 500ms
+PAUSE_THRESHOLD_MS = 1000  # A pause is considered significant if it's longer than 1000ms
 FILLER_WORDS = {
     'um', 'uh', 'er', 'ah', 'like', 'you know', 'so', 'right', 'okay', 'i mean'
 }

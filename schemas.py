@@ -1,5 +1,5 @@
 import uuid
-from pydantic import BaseModel, EmailStr, ConfigDict
+from pydantic import BaseModel, EmailStr, ConfigDict, Field
 from datetime import datetime
 from .models import RecordingStatus
 
@@ -59,29 +59,29 @@ class Recording(RecordingBase):
 # ---Analysis Schemas for the new synchronous endpoint---
 
 class FillerWordsDetails(BaseModel):
-    count: int
-    ratio: float # e.g., 0.05 for 5%
+    count: int = Field(..., description="Total number of filler words detected.")
+    ratio: float = Field(..., description="Ratio of filler words to total words (e.g., 0.05 for 5%).")
 
 class Scores(BaseModel):
-    fluency: int
-    pronunciation: int
+    fluency: int = Field(..., description="Score from 0-100 based on the calculated Words Per Minute (WPM).")
+    pronunciation: int = Field(..., description="Score from 0-100 based on the Word Error Rate (WER). 100 is a perfect match.")
     # Changed to an integer score for consistency
-    filler_words: int
-    pacing: int 
+    filler_words: int = Field(..., description="Score from 0-100 based on the ratio of filler words. A higher score is better, with 100 indicating no filler words.")
+    pacing: int = Field(..., description="Score from 0-100 based on the consistency of the speaking pace.")
 
 class Details(BaseModel):
-    wer: float # Word Error Rate
-    wpm: int # Words Per Minute
-    pauses: int # Number of significant pauses
-    confidence: float | None = None
+    wer: float = Field(..., description="Word Error Rate. Lower is better (0.0 is a perfect match).")
+    wpm: int = Field(..., description="Calculated Words Per Minute.")
+    pauses: int = Field(..., description="Number of significant pauses (longer than 1 second) detected.")
+    confidence: float | None = Field(None, description="Overall confidence of the transcription from the speech-to-text service (0.0 to 1.0).")
     # Added details for filler words
     filler_words_details: FillerWordsDetails
 
 class AnalysisResponse(BaseModel):
-    transcript: str
+    transcript: str = Field(..., description="The transcribed text from the audio.")
     scores: Scores
     details: Details
-    duration_seconds: float
+    duration_seconds: float = Field(..., description="The duration of the spoken content in seconds.")
 
 class CombinedAnalysisResponse(AnalysisResponse):
     """The response model for the unified analysis and submission endpoint."""

@@ -94,12 +94,14 @@ async def submit_and_analyze(
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    A unified endpoint that:
-    1. Creates a new custom prompt and its associated recording in the database.
-    2. Uploads the audio file to storage.
-    3. Transcribes and analyzes the audio for fluency, pronunciation, and pacing.
-    4. Returns the full analysis along with the new recording's ID and a signed URL for playback.
+    """A unified endpoint to submit an audio recording against a prompt for analysis.
+
+    This endpoint performs the following actions:
+    1.  Validates the uploaded audio file.
+    2.  Sends the audio for transcription and analysis.
+    3.  Creates a new custom prompt and its associated recording in the database.
+    4.  Uploads the audio file to cloud storage.
+    5.  Returns the full analysis results, the new recording's ID, and a temporary signed URL for playback.
     """
     # Logger configuration
     logger = logging.getLogger("uvicorn.error")  # Get the default logger used by FastAPI/Uvicorn
