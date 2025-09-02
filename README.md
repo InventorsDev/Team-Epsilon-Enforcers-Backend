@@ -4,7 +4,7 @@ This project is the backend for a Speech Improvement application, designed to he
 
 ## Features
 
-- **User Authentication:** Secure user management using Supabase for authentication.
+- **User Authentication:** Secure user management via Supabase, with JWT-based authentication for protected endpoints.
 - **Audio Submission:** Users can upload audio files (e.g., MP3, WAV, M4A) for analysis.
 - **Speech-to-Text:** Integrates with AssemblyAI to provide fast and accurate transcriptions of user audio.
 - **Comprehensive Speech Analysis:**
@@ -24,6 +24,58 @@ Here are the primary endpoints available:
 | `GET`  | `/health-check`                      | Checks the API and database connection status.                                                              |
 | `GET`  | `/users/me`                          | Retrieves the profile of the currently authenticated user. Creates a new profile in the DB if it is not already there(Protected)                                      |
 | `POST` | `/recordings/submit-and-analyze`     | Submits an audio file and a text prompt for transcription and full analysis. Returns the complete analysis. (Protected) |
+
+## Authentication Flow
+
+This backend uses a token-based authentication system powered by Supabase. The frontend client is responsible for the initial steps of user sign-up and sign-in.
+
+### 1. Frontend: Acquiring Tokens
+
+To authenticate, the frontend application must handle user registration and login directly with Supabase using a client-side library (e.g., `supabase-js`).
+
+-   **Sign-Up/Sign-In:** The user provides their email and password.
+-   **Receive Tokens:** Upon successful authentication, Supabase returns a session object containing two key items:
+    -   `access_token`: A short-lived JSON Web Token (JWT).
+    -   `refresh_token`: A long-lived token used to get a new `access_token`.
+
+### 2. Frontend: Making Authenticated Requests
+
+To access protected endpoints on this backend, the frontend must include the `access_token` in the `Authorization` header of each request, using the **Bearer** scheme.
+
+**Example:**
+```
+Authorization: Bearer <your_supabase_access_token>
+```
+
+### 3. Backend: Validating Users
+
+When a request with an `Authorization` header is received, the backend:
+1.  Extracts the JWT (`access_token`).
+2.  Verifies the token's validity with Supabase.
+3.  If the token is valid, it retrieves the associated user's profile.
+4.  **First-Time Login:** If the user exists in Supabase but not in the application's database, a new user profile is automatically created.
+
+### 4. Security and User Experience: Managing Tokens
+
+For a seamless and secure user experience, the frontend should implement the following token management strategy:
+
+-   **Access Token (`access_token`)**:
+    -   **Purpose:** Grants access to protected API resources.
+    -   **Security:** It is short-lived (e.g., 1 hour) to minimize the risk of stolen tokens. Because it expires quickly, it should be stored in a location accessible to your frontend code, such as in-memory or browser local storage.
+-   **Refresh Token (`refresh_token`)**:
+    -   **Purpose:** Silently obtains a new `access_token` when the current one expires, without requiring the user to log in again.
+    -   **Security:** It is long-lived and more sensitive. It should be stored securely, ideally in an **HttpOnly cookie** to prevent access from client-side scripts and mitigate XSS attacks.
+
+#### Recommended Flow:
+
+1.  **Login:** User signs in. The frontend stores the `access_token` in memory and the `refresh_token` in a secure HttpOnly cookie.
+2.  **API Calls:** The frontend attaches the `access_token` to all API requests.
+3.  **Token Expiration:** When an API call fails with a `401 Unauthorized` error, it signals that the `access_token` has likely expired.
+4.  **Silent Refresh:** The frontend makes a request to the Supabase `/token` endpoint (using the `refresh_token`) to get a new `access_token`.
+5.  **Retry Request:** Once the new token is received, the frontend automatically retries the original API request that failed.
+6.  **Logout:** If the refresh token is also invalid or has expired, the user is logged out and must sign in again.
+
+This approach ensures that the user stays logged in for an extended period while maintaining a high level of security.
 
 ## Technologies Used
 
