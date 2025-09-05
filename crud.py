@@ -2,7 +2,7 @@ import uuid
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_, desc
 from typing import List
-from . import models, schemas
+import models, schemas
 
 def create_user_prompt(db: Session, prompt: schemas.PromptCreate, user_id: uuid.UUID, prompt_type_id: int):
     """
@@ -50,5 +50,3 @@ def create_recording(db: Session, user_id: uuid.UUID, prompt_id: int, duration: 
     db.commit()
     db.refresh(db_recording)
     return db_recording
-
-

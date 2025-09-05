@@ -5,8 +5,8 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from sqlalchemy.orm import Session
 from supabase import create_client, AuthError, Client
-from . import models, schemas
-from .database import get_db
+import models, schemas
+from database import get_db
 
 load_dotenv()
 

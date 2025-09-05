@@ -3,15 +3,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 import supabase
-from . import models, schemas, auth, crud
-from .database import SessionLocal, engine, get_db
+import models, schemas, auth, crud
+from database import SessionLocal, engine, get_db
 from supabase import create_client
 import os
 from typing import List
 import mimetypes
 import uuid
-from .transcription_service import transcribe_audio_assemblyai_async
-from .analysis_service import perform_full_analysis_async
+from transcription_service import transcribe_audio_assemblyai_async
+from analysis_service import perform_full_analysis_async
 import logging
 
 # models.Base.metadata.create_all(bind=engine) # This is removed for production. Use Alembic for migrations.

@@ -1,7 +1,7 @@
 import uuid
 from pydantic import BaseModel, EmailStr, ConfigDict, Field
 from datetime import datetime
-from .models import RecordingStatus
+from models import RecordingStatus
 
 # Base model for a user, this is what the API will return
 class User(BaseModel):
