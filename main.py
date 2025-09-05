@@ -14,7 +14,7 @@ from .transcription_service import transcribe_audio_assemblyai_async
 from .analysis_service import perform_full_analysis_async
 import logging
 
-models.Base.metadata.create_all(bind=engine)
+# models.Base.metadata.create_all(bind=engine) # This is removed for production. Use Alembic for migrations.
 
 app = FastAPI(
     title="Speech Improvement App API",
