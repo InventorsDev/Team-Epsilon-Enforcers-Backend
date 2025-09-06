@@ -17,10 +17,24 @@ RUN pip wheel --no-cache-dir --wheel-dir /app/wheels -r requirements.txt
 # --- Stage 2: Final Stage ---
 FROM python:3.10-slim
 
+# Set up a virtual environment to isolate dependencies and avoid the root user warning.
+ENV VIRTUAL_ENV=/opt/venv
+RUN python3 -m venv $VIRTUAL_ENV
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+# Create a non-root user to run the application for better security.
+RUN addgroup --system app && adduser --system --ingroup app app
+
 WORKDIR /app
 
 COPY --from=builder /app/wheels /wheels
-COPY . .
+# Installing into the venv will not trigger the root user warning.
 RUN pip install --no-cache /wheels/*
+
+# Copy the application code and set the correct ownership.
+COPY --chown=app:app . .
+
+# Switch to the non-root user.
+USER app
 
 CMD ["gunicorn", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "main:app", "--host", "0.0.0.0", "--port", "8000"]

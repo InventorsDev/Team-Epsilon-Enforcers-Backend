@@ -56,3 +56,4 @@ urllib3==2.5.0
 uvicorn==0.35.0
 websocket-client==0.59.0
 websockets==15.0.1
+gunicorn
