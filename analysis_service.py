@@ -124,7 +124,7 @@ def analyze_filler_words(transcript: str, total_words: int):
     Counts filler words, calculates their ratio, and generates a score.
 
     Returns:
-        A tuple of (count, ratio, score).
+        A tuple of (count, ratio, score, list_of_fillers).
     """
     # Use regex to find whole words only
     found_fillers = re.findall(r'\b(' + '|'.join(FILLER_WORDS) + r')\b', transcript.lower())
@@ -136,7 +136,7 @@ def analyze_filler_words(transcript: str, total_words: int):
     # A ratio of 5% (0.05) or higher results in a score of 0.
     score = normalize_inverted_score(ratio, FILLER_WORD_RATIO_THRESHOLD)
     
-    return count, round(ratio, 4), score
+    return count, round(ratio, 4), score, found_fillers
 
 def analyze_pacing(word_timestamps: List[Dict], duration_seconds: float):
     """
@@ -204,14 +204,14 @@ def perform_full_analysis(prompt: str, transcript: str, word_timestamps: List[Di
                 "wer": round(wer, 4),
                 "wpm": 0,
                 "pauses": 0,
-                "filler_words_details": {"count": 0, "ratio": 0},
+                "filler_words_details": {"count": 0, "ratio": 0, "words": []},
                 "confidence": confidence,
             }
         }
 
     wpm, pauses, fluency_score = analyze_fluency(word_timestamps, duration)
     wer, pronunciation_score = analyze_pronunciation(prompt, transcript)
-    filler_count, filler_ratio, filler_score = analyze_filler_words(transcript, num_words)
+    filler_count, filler_ratio, filler_score, found_fillers = analyze_filler_words(transcript, num_words)
     pacing_score = analyze_pacing(word_timestamps, duration)
 
     return {
@@ -229,7 +229,11 @@ def perform_full_analysis(prompt: str, transcript: str, word_timestamps: List[Di
             "wer": round(wer, 4),
             "wpm": wpm,
             "pauses": pauses,
-            "filler_words_details": {"count": filler_count, "ratio": filler_ratio},
+            "filler_words_details": {
+                "count": filler_count,
+                "ratio": filler_ratio,
+                "words": found_fillers
+            },
             "confidence": confidence,
         }
     }

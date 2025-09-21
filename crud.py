@@ -4,6 +4,36 @@ from sqlalchemy import or_, desc
 from typing import List
 import models, schemas
 
+
+def update_user(db: Session, user: models.User, user_update: schemas.UserUpdate) -> models.User:
+    """Updates a user's attributes in the database."""
+    # Get the update data, excluding any fields that were not set in the request
+    update_data = user_update.model_dump(exclude_unset=True)
+    
+    for key, value in update_data.items():
+        if hasattr(user, key):
+            setattr(user, key, value)
+            
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+
+def delete_user(db: Session, user_id: str):
+    """
+    Deletes a user and their associated data from the database.
+    NOTE: This assumes that the database schema is set up with cascading deletes
+    for related tables like prompts and recordings. If not, you must manually
+    delete those records here before deleting the user.
+    """
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user:
+        db.delete(user)
+        db.commit()
+
+
 def create_user_prompt(db: Session, prompt: schemas.PromptCreate, user_id: uuid.UUID, prompt_type_id: int):
     """
     Creates a new prompt and associates it with a user and a prompt type.

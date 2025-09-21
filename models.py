@@ -20,8 +20,8 @@ class User(Base):
     name = Column(String)
 
     # Relationships
-    prompts = relationship("Prompt", back_populates="user")
-    recordings = relationship("Recording", back_populates="user")
+    prompts = relationship("Prompt", back_populates="user", cascade="all, delete-orphan")
+    recordings = relationship("Recording", back_populates="user", cascade="all, delete-orphan")
 
 #prompt_type model: Relates a prompt with its type
 class PromptType(Base):
@@ -38,21 +38,21 @@ class Prompt(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     text = Column(Text, nullable=False)
     prompt_type_id = Column(Integer, ForeignKey("prompt_types.id"), nullable=True)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     is_active = Column(Boolean, default=True)
 
     # Relationships
     user = relationship("User", back_populates="prompts")
     prompt_type = relationship("PromptType", back_populates="prompts")
-    recordings = relationship("Recording", back_populates="prompt")
+    recordings = relationship("Recording", back_populates="prompt", cascade="all, delete-orphan")
 
 # Recording Model
 class Recording(Base):
     __tablename__ = "recordings"
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    prompt_id = Column(Integer, ForeignKey("prompts.id"), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4) # This is the primary key
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    prompt_id = Column(Integer, ForeignKey("prompts.id", ondelete="CASCADE"), nullable=False)
     audio_url = Column(String, nullable=False)
     transcript = Column(Text, nullable=True)
     duration_seconds = Column(Integer)

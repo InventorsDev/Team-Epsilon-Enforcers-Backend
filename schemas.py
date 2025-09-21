@@ -1,3 +1,4 @@
+from typing import Optional, List
 import uuid
 from pydantic import BaseModel, EmailStr, ConfigDict, Field
 from datetime import datetime
@@ -10,6 +11,12 @@ class User(BaseModel):
     name: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class UserUpdate(BaseModel):
+    """Schema for updating user details."""
+    name: Optional[str] = None
+    # Email is tied to the authentication provider and should not be updated here.
 
 # ---PromptType Schemas---
 
@@ -61,6 +68,7 @@ class Recording(RecordingBase):
 class FillerWordsDetails(BaseModel):
     count: int = Field(..., description="Total number of filler words detected.")
     ratio: float = Field(..., description="Ratio of filler words to total words (e.g., 0.05 for 5%).")
+    words: List[str] = Field(..., description="A list of the filler words that were detected, in order of occurrence.")
 
 class Scores(BaseModel):
     fluency: int = Field(..., description="Score from 0-100 based on the calculated Words Per Minute (WPM).")
