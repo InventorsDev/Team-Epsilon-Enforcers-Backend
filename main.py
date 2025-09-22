@@ -23,7 +23,13 @@ app = FastAPI(
 )
 
 # --- CORS Middleware ---
-origins = ["*"]
+# It's a security best practice to explicitly list your frontend's origins
+# instead of using a wildcard ("*"), especially when allow_credentials=True.
+# We'll read this from an environment variable.
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173", "http://localhost:5174", "http://localhost:3000")
+
+# The origins list will be a list of strings.
+origins = [origin.strip() for origin in ALLOWED_ORIGINS.split(",")]
 
 app.add_middleware(
     CORSMiddleware,
