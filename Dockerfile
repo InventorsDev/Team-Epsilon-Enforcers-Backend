@@ -22,6 +22,11 @@ ENV VIRTUAL_ENV=/opt/venv
 RUN python3 -m venv $VIRTUAL_ENV
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
+# Install system dependencies for audio processing and file type identification.
+# ffmpeg is crucial for handling various audio formats.
+# libmagic1 helps with MIME type detection.
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg libmagic1 && rm -rf /var/lib/apt/lists/*
+
 # Create a non-root user to run the application for better security.
 RUN addgroup --system app && adduser --system --ingroup app app
 
