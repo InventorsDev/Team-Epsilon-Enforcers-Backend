@@ -16,11 +16,12 @@ logger = logging.getLogger(__name__)
 # --- AssemblyAI Client Initialization ---
 ASSEMBLYAI_API_KEY = os.getenv("ASSEMBLYAI_API_KEY")
 
-if not ASSEMBLYAI_API_KEY:
-    raise ValueError("ASSEMBLYAI_API_KEY environment variable not set.")
-
-aai.settings.api_key = ASSEMBLYAI_API_KEY
-client = aai.Transcriber()
+def get_transcriber():
+    """Initializes and returns the AssemblyAI transcriber client."""
+    if not ASSEMBLYAI_API_KEY:
+        raise ValueError("ASSEMBLYAI_API_KEY environment variable not set.")
+    aai.settings.api_key = ASSEMBLYAI_API_KEY
+    return aai.Transcriber()
 
 async def transcribe_audio_assemblyai_async(audio_bytes: bytes, content_type: str):
     """
@@ -41,6 +42,7 @@ async def transcribe_audio_assemblyai_async(audio_bytes: bytes, content_type: st
             temp_audio_file.flush()
 
             # 2. --- Submit job to AssemblyAI ---
+            client = get_transcriber()
             config = aai.TranscriptionConfig(speaker_labels=True)
             transcript = await run_in_threadpool(
                 client.transcribe, temp_audio_file.name, config

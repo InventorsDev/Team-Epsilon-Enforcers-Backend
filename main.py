@@ -1,8 +1,10 @@
-from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Form, Body, Response
+from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Form, Body, Response, Request
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-import supabase
+from sqlalchemy.engine.url import make_url
+from sqlalchemy.exc import OperationalError
 import models, schemas, auth, crud
 from database import  get_db
 from supabase import AuthApiError, create_client
@@ -14,19 +16,46 @@ from transcription_service import transcribe_audio_assemblyai_async
 from analysis_service import perform_full_analysis_async
 import logging
 
-# models.Base.metadata.create_all(bind=engine) # This is removed for production. Use Alembic for migrations.
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Application lifespan manager. This function is executed on startup and shutdown.
+    It's used here to check for required environment variables and initialize clients.
+    """
+    logger = logging.getLogger("uvicorn.error")
+    logger.info("--- Application Startup ---")
+
+    # Check for all required environment variables
+    required_env_vars = [
+        "DATABASE_URL",
+        "SUPABASE_PROJECT_URL",
+        "SUPABASE_KEY",
+        "ASSEMBLYAI_API_KEY",
+        "ALLOWED_ORIGINS",
+    ]
+    missing_vars = [var for var in required_env_vars if not os.getenv(var)]
+
+    if missing_vars:
+        error_msg = f"Missing required environment variables: {', '.join(missing_vars)}"
+        logger.critical(error_msg)
+        # we log a critical error. The app will likely fail on first use
+    
+    yield
+    logger.info("--- Application Shutdown ---")
 
 app = FastAPI(
     title="Speech Improvement App API",
     description="Backend for handling prompts, audio processing, and transcriptions.",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 # --- CORS Middleware ---
 # It's a security best practice to explicitly list your frontend's origins
 # instead of using a wildcard ("*"), especially when allow_credentials=True.
 # We'll read this from an environment variable.
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173")
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS")
 
 # The origins list will be a list of strings.
 origins = [origin.strip() for origin in ALLOWED_ORIGINS.split(",")]
@@ -40,9 +69,23 @@ app.add_middleware(
 )
 
 
+@app.exception_handler(OperationalError)
+async def db_connection_exception_handler(request: Request, exc: OperationalError):
+    """
+    Global exception handler for database connection errors.
+    Returns a 503 Service Unavailable response, which is more specific
+    for this kind of infrastructure issue.
+    """
+    logger = logging.getLogger("uvicorn.error")
+    logger.error(f"Database connection error: {exc}", exc_info=True)
+    return Response(
+        content="Could not connect to the database.", status_code=status.HTTP_503_SERVICE_UNAVAILABLE
+    )
+
+
 #---Audio Configuration and Helpers---
 
-MAX_FILE_SIZE = 50 * 1024 * 1024  # 10 MB
+MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
 SUPPORTED_MIME_TYPES = ["audio/mp3", "audio/wav", "audio/mpeg", "audio/webm", "audio/x-m4a"]
 SUPABASE_BUCKET = "Recordings"
 
@@ -78,14 +121,39 @@ def health_check(db: Session = Depends(get_db)):
     """
     Checks if the API can connect to the database.
     """
+    logger = logging.getLogger("uvicorn.error")
+    db_url_str = os.getenv("DATABASE_URL")
+
+    if not db_url_str:
+        logger.error("CRITICAL: DATABASE_URL environment variable is not set!")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database configuration is missing.",
+        )
+
+    try:
+        # Let's parse the URL to safely log its components without the password
+        parsed_url = make_url(db_url_str)
+        logger.info("--- Health Check: Verifying Database Connection Details ---")
+        logger.info(f"  - Username: {parsed_url.username}")
+        logger.info(f"  - Host: {parsed_url.host}")
+        logger.info(f"  - Port: {parsed_url.port}")
+        logger.info(f"  - Database: {parsed_url.database}")
+        # DO NOT log the full URL or the password.
+    except Exception as e:
+        logger.error(f"Could not parse DATABASE_URL. Error: {e}")
+
     try:
         # Try to execute a simple query
         db.execute(text("SELECT 1"))
+        logger.info("--- Health Check: Database connection successful. ---")
         return {"status": "ok", "database_connection": "successful"}
     except Exception as e:
-        return {"status": "error", "database_connection": "failed", "detail": str(e)}
-    
-    
+        logger.error(f"--- Health Check: Database connection failed. ---", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Database connection failed.",
+        )
 # NEW: Protected endpoint
 @app.get("/users/me", response_model=schemas.User)
 def read_users_me(current_user: schemas.User = Depends(auth.get_current_user)):
