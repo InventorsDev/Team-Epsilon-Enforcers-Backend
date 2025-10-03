@@ -1,6 +1,6 @@
-# Speech Improvement Backend
+# Talk-Beta Backend
 
-This project is the backend for a Speech Improvement application, designed to help users enhance their public speaking and pronunciation skills. It provides a RESTful API to handle user authentication, audio recording submissions, speech-to-text transcription, and in-depth analysis of spoken content.
+This project is the backend for the Talk-Beta application, designed to help users enhance their public speaking and pronunciation skills. It provides a RESTful API to handle user authentication, audio recording submissions, speech-to-text transcription, and in-depth analysis of spoken content.
 
 ## Features
 
